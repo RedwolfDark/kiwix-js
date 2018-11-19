@@ -821,6 +821,11 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
     // DEV: If you want to support more namespaces, add them to the END of the character set [-I] (not to the beginning) 
     var regexpTagsWithZimUrl = /(<(?:img|script|link)\s+[^>]*?\b)(?:src|href)(\s*=\s*["']\s*)(?:\.\.\/|\/)+([-I]\/[^"']*)/ig;
     
+    // DEV: The regex below matches ZIM links (anchor hrefs) that should have the html5 "donwnload" attribute added to 
+    // the link. This is currently the case for epub files in Project Gutenberg ZIMs -- add any further types you need
+    // to support to this regex. The "zip" has been added here as an example of how to support further filetypes
+    var regexpDownloadLinks = /^.*?\.epub($|\?)|^.*?\.zip($|\?)/i
+    
     // Cache for CSS styles contained in ZIM.
     // It significantly speeds up subsequent page display. See kiwix-js issue #335
     var cssCache = new Map();
@@ -916,12 +921,22 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                     // It's an external URL : we should open it in a new tab
                     this.target = "_blank";
                 } else {
-                    // It's a link to another article
-                    // Add an onclick event to go to this article
+                    // It's a link to an article or file in the ZIM
+                    if (regexpDownloadLinks.test(href)) {
+                        // It's a link to a file in the ZIM that needs to be downloaded, not displayed (e.g. *.epub)
+                        this.setAttribute('download', 'true');
+                    }    
+                    // Add an onclick event to extract this article or file from the ZIM
                     // instead of following the link
                     $(this).on('click', function (e) {
                         var decodedURL = decodeURIComponent(zimUrl);
-                        goToArticle(decodedURL);
+                        var downloadAttribute = this.getAttribute('download') ? 'download' : null;
+                        var contentType = this.getAttribute('type');
+                        if (!contentType) {
+                            // DEV: Add more contentTypes here for downloadable files
+                            if (/\.epub/.test(decodedURL)) contentType = 'application/epub+zip';
+                        }
+                        goToArticle(decodedURL, downloadAttribute, contentType);
                         return false;
                     });
                 }
@@ -1070,14 +1085,25 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
      * Replace article content with the one of the given title
      * @param {String} title
      */
-    function goToArticle(title) {
+    function goToArticle(title, download, contentType) {
         $("#searchingArticles").show();
         title = uiUtil.removeUrlParameters(title);
         selectedArchive.getDirEntryByTitle(title).then(function(dirEntry) {
             if (dirEntry === null || dirEntry === undefined) {
                 $("#searchingArticles").hide();
                 alert("Article with title " + title + " not found in the archive");
-            } else {
+            } else if (download) {
+                selectedArchive.readBinaryFile(dirEntry, function(fileDirEntry, content) {
+                    if(!contentType) contentType = 'application/octet-stream';
+                    var a = document.createElement('a');
+                    var blob = new Blob([content], {'type':contentType});
+                    a.href = window.URL.createObjectURL(blob);
+                    a.download = title.replace(/^.*\/([^\/]+)$/, '$1');
+                    a.click();
+                    $("#searchingArticles").hide();
+                });
+            }
+            else {
                 readArticle(dirEntry);
             }
         }).fail(function(e) { alert("Error reading article with title " + title + " : " + e); });
