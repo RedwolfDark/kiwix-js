@@ -1082,10 +1082,13 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
 
 
     /**
-     * Replace article content with the one of the given title
-     * @param {String} title
+     * Replaces article content with the one of the given title, or extracts a downloadable file from the ZIM
+     * 
+     * @param {String} title The path and filename to the article or file to be extracted
+     * @param {Boolean} download If true, the file will be prepared for download instead of treated as an article
+     * @param {String} type The mimetype of the downloadable file, if known 
      */
-    function goToArticle(title, download, contentType) {
+    function goToArticle(title, download, type) {
         $("#searchingArticles").show();
         title = uiUtil.removeUrlParameters(title);
         selectedArchive.getDirEntryByTitle(title).then(function(dirEntry) {
@@ -1095,16 +1098,15 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             } else if (download) {
                 selectedArchive.readBinaryFile(dirEntry, function(fileDirEntry, content) {
                     // Download code taken from https://stackoverflow.com/a/19230668/9727685 
-                    if(!contentType) contentType = 'application/octet-stream';
+                    if(!type) type = 'application/octet-stream';
                     var a = document.createElement('a');
-                    var blob = new Blob([content], {'type':contentType});
+                    var blob = new Blob([content], {'type':type});
                     a.href = window.URL.createObjectURL(blob);
                     a.download = title.replace(/^.*\/([^\/]+)$/, '$1');
                     a.click();
                     $("#searchingArticles").hide();
                 });
-            }
-            else {
+            } else {
                 readArticle(dirEntry);
             }
         }).fail(function(e) { alert("Error reading article with title " + title + " : " + e); });
