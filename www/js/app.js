@@ -1094,6 +1094,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 alert("Article with title " + title + " not found in the archive");
             } else if (download) {
                 selectedArchive.readBinaryFile(dirEntry, function(fileDirEntry, content) {
+                    // Download code taken from https://stackoverflow.com/a/19230668/9727685 
                     if(!contentType) contentType = 'application/octet-stream';
                     var a = document.createElement('a');
                     var blob = new Blob([content], {'type':contentType});
