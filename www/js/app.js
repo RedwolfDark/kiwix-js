@@ -1105,11 +1105,26 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                     if(!type) type = 'application/octet-stream';
                     var a = document.createElement('a');
                     var blob = new Blob([content], {'type':type});
+                    var filename = download || title.replace(/^.*\/([^\/]+)$/, '$1');
                     a.href = window.URL.createObjectURL(blob);
                     a.target = '_blank';
-                    a.download = download || title.replace(/^.*\/([^\/]+)$/, '$1');
-                    document.body.appendChild(a); // NB we have to add the anchor to the document for Firefox to be able to click it
-                    a.click();
+                    a.type = type;
+                    a.download = filename;
+                    a.innerHTML = filename;
+                    var alertMessage = document.getElementById('alertMessage');
+                    alertMessage.innerHTML = '<strong>Download</strong> If the download does not start, please click the following link: ';
+                    alertMessage.appendChild(a); // NB we have to add the anchor to the document for Firefox to be able to click it
+                    try { a.click(); }
+                    catch (err) { 
+                        // If the click fails, use an alternative download method
+                        if (window.navigator && window.navigator.msSaveBlob) {
+                            // This works for IE11
+                            window.navigator.msSaveBlob(blob, filename);
+                        } else {
+                            // Fall back to showing the link in a message box
+                            document.getElementById('alertBox').style.display = "block";
+                        }
+                    }
                     $("#searchingArticles").hide();
                 });
             } else {
