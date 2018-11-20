@@ -922,20 +922,24 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                     this.target = "_blank";
                 } else {
                     // It's a link to an article or file in the ZIM
+                    var decodedURL = decodeURIComponent(zimUrl);
                     if (regexpDownloadLinks.test(href)) {
                         // It's a link to a file in the ZIM that needs to be downloaded, not displayed (e.g. *.epub)
-                        this.setAttribute('download', 'true');
-                    }    
-                    // Add an onclick event to extract this article or file from the ZIM
-                    // instead of following the link
-                    $(this).on('click', function (e) {
-                        var decodedURL = decodeURIComponent(zimUrl);
-                        var downloadAttribute = this.getAttribute('download') ? 'download' : null;
+                        var filename = decodedURL.replace(/^.*\/([^\/]+)$/, '$1');
+                        var downloadAttribute = this.getAttribute('download');
+                        if (!downloadAttribute) this.setAttribute('download', filename);
                         var contentType = this.getAttribute('type');
                         if (!contentType) {
                             // DEV: Add more contentTypes here for downloadable files
                             if (/\.epub/.test(decodedURL)) contentType = 'application/epub+zip';
+                            if (contentType) this.setAttribute('type', contentType);
                         }
+                    }    
+                    // Add an onclick event to extract this article or file from the ZIM
+                    // instead of following the link
+                    $(this).on('click', function (e) {
+                        var downloadAttribute = this.getAttribute('download');
+                        var contentType = this.getAttribute('type');
                         goToArticle(decodedURL, downloadAttribute, contentType);
                         return false;
                     });
@@ -1102,7 +1106,9 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                     var a = document.createElement('a');
                     var blob = new Blob([content], {'type':type});
                     a.href = window.URL.createObjectURL(blob);
-                    a.download = title.replace(/^.*\/([^\/]+)$/, '$1');
+                    a.target = '_blank';
+                    a.download = download || title.replace(/^.*\/([^\/]+)$/, '$1');
+                    document.body.appendChild(a); // NB we have to add the anchor to the document for Firefox to be able to click it
                     a.click();
                     $("#searchingArticles").hide();
                 });
