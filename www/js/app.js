@@ -809,12 +809,12 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
     var regexpPath = /^(.*\/)[^\/]+$/;
     // Pattern to find a ZIM URL (with its namespace) - see http://www.openzim.org/wiki/ZIM_file_format#Namespaces
     var regexpZIMUrlWithNamespace = /(?:^|\/)([-ABIJMUVWX]\/.+)/;
-    // Regex below finds images, scripts and stylesheets with ZIM-type metadata and image namespaces [kiwix-js #378]
+    // Regex below finds images, scripts, stylesheets and video sources with ZIM-type metadata and image namespaces [kiwix-js #378]
     // It first searches for <img, <script, or <link, then scans forward to find, on a word boundary, either src=["'] 
     // OR href=["'] (ignoring any extra whitespace), and it then tests everything up to the next ["'] against a pattern that
     // matches ZIM URLs with namespaces [-I] ("-" = metadata or "I" = image). Finally it removes the relative or absolute path. 
     // DEV: If you want to support more namespaces, add them to the END of the character set [-I] (not to the beginning) 
-    var regexpTagsWithZimUrl = /(<(?:img|script|link)\s+[^>]*?\b)(?:src|href)(\s*=\s*["']\s*)(?:\.\.\/|\/)+([-I]\/[^"']*)/ig;
+    var regexpTagsWithZimUrl = /(<(?:img|script|link|source)\s+[^>]*?\b)(?:src|href)(\s*=\s*["']\s*)(?:\.\.\/|\/)+([-I]\/[^"']*)/ig;
     
     // Cache for CSS styles contained in ZIM.
     // It significantly speeds up subsequent page display. See kiwix-js issue #335
