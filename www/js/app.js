@@ -866,7 +866,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             loadCSSJQuery();
             //JavaScript loading currently disabled
             //loadJavaScriptJQuery();            
-            insertVideoStreamsJQuery();
+            insertVideoBlobsJQuery();
         };
      
         // Load the blank article to clear the iframe (NB iframe onload event runs *after* this)
@@ -1032,13 +1032,14 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             });
         }
 
-        function insertVideoStreamsJQuery() {
-            Array.prototype.slice.call(iframeArticleContent.contentDocument
-            .querySelectorAll('video[data-kiwixurl], source[data-kiwixurl]')).forEach(function(mediaSource) {
-                var source = mediaSource.dataset ? mediaSource.dataset.kiwixurl : null;
+        function insertVideoBlobsJQuery() {
+            var iframe = iframeArticleContent.contentDocument;
+            Array.prototype.slice.call(iframe.querySelectorAll('video[data-kiwixurl], source[data-kiwixurl]'))
+            .forEach(function(mediaSource) {
+                var source = mediaSource.dataset.kiwixurl;
                 var mimeType = mediaSource.type;
-                if (!source) {
-                    console.error('No video source was found!');
+                if (!source || !regexpZIMUrlWithNamespace.test(source)) {
+                    console.error('No usable media source was found!');
                     return;
                 }
                 if (!mimeType) {
