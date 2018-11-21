@@ -814,7 +814,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
     // OR href=["'] (ignoring any extra whitespace), and it then tests everything up to the next ["'] against a pattern that
     // matches ZIM URLs with namespaces [-I] ("-" = metadata or "I" = image). Finally it removes the relative or absolute path. 
     // DEV: If you want to support more namespaces, add them to the END of the character set [-I] (not to the beginning) 
-    var regexpTagsWithZimUrl = /(<(?:img|script|link|source)\s+[^>]*?\b)(?:src|href)(\s*=\s*["']\s*)(?:\.\.\/|\/)+([-I]\/[^"']*)/ig;
+    var regexpTagsWithZimUrl = /(<(?:img|script|link|video|source)\s+[^>]*?\b)(?:src|href)(\s*=\s*["']\s*)(?:\.\.\/|\/)+([-I]\/[^"']*)/ig;
     
     // Cache for CSS styles contained in ZIM.
     // It significantly speeds up subsequent page display. See kiwix-js issue #335
