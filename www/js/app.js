@@ -866,6 +866,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             loadCSSJQuery();
             //JavaScript loading currently disabled
             //loadJavaScriptJQuery();            
+            insertVideoStreamsJQuery();
         };
      
         // Load the blank article to clear the iframe (NB iframe onload event runs *after* this)
@@ -1028,6 +1029,54 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 }).fail(function (e) {
                     console.error("could not find DirEntry for javascript : " + title, e);
                 });
+            });
+        }
+
+        function insertVideoStreamsJQuery() {
+            Array.prototype.slice.call(iframeArticleContent.contentDocument
+            .getElementsByTagName('video')).forEach(function(video) {
+                var source = video.dataset ? video.dataset.kiwixurl : null;
+                var type = video.type;
+                if (!source || !type) {
+                    var sources = video.getElementsByTagName('source');
+                    if (sources) {
+                        source = source ? source : sources[0].dataset ? sources[0].dataset.kiwixurl : null;
+                        type = type ? type : sources[0].type ? sources[0].type : null;
+                    }
+                }
+                if (!source) {
+                    console.error('No video source was found!');
+                    return;
+                }
+                if (!type) {
+                    // Try to guess type from file extension
+                    type = source.replace(/^.*\.([^.]+)$/, 'video/$1');
+                }
+                //type = /webm/.test(type) ? type + '; codecs="v9,vorbis"' : type;
+                if ('MediaSource' in window) {
+                    console.log("Source url found: " + source + "; Type: " + type);
+                    var mediaSource = new MediaSource();
+                    //console.log(mediaSource.readyState); // closed
+                    video.src = URL.createObjectURL(mediaSource);
+                    mediaSource.addEventListener('sourceopen', mediaSourceOpen);
+                } else {
+                    // We'll default here to creating a blob url
+                }
+                function mediaSourceOpen (_) {
+                    //console.log(this.readyState); // open
+                    var mediaSource = this;
+                    var sourceBuffer = mediaSource.addSourceBuffer(type);
+                    selectedArchive.getDirEntryByTitle(decodeURIComponent(source)).then(function(dirEntry) {
+                        return selectedArchive.readBinaryFile(dirEntry, function (fileDirEntry, mediaArray) {
+                            sourceBuffer.addEventListener('updateend', function (_) {
+                                mediaSource.endOfStream();
+                                video.play();
+                            });
+                            var buf = mediaArray.buffer;
+                            sourceBuffer.appendBuffer(buf);
+                        });
+                    });
+                }
             });
         }
     }
