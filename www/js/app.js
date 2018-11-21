@@ -1034,49 +1034,30 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
 
         function insertVideoStreamsJQuery() {
             Array.prototype.slice.call(iframeArticleContent.contentDocument
-            .getElementsByTagName('video')).forEach(function(video) {
-                var source = video.dataset ? video.dataset.kiwixurl : null;
-                var type = video.type;
-                if (!source || !type) {
-                    var sources = video.getElementsByTagName('source');
-                    if (sources) {
-                        source = source ? source : sources[0].dataset ? sources[0].dataset.kiwixurl : null;
-                        type = type ? type : sources[0].type ? sources[0].type : null;
-                    }
-                }
+            .querySelectorAll('video[data-kiwixurl], source[data-kiwixurl]')).forEach(function(mediaSource) {
+                var source = mediaSource.dataset ? mediaSource.dataset.kiwixurl : null;
+                var mimeType = mediaSource.type;
                 if (!source) {
                     console.error('No video source was found!');
                     return;
                 }
-                if (!type) {
+                if (!mimeType) {
                     // Try to guess type from file extension
-                    type = source.replace(/^.*\.([^.]+)$/, 'video/$1');
+                    mimeType = source.replace(/^.*\.([^.]+)$/, 'video/$1');
                 }
-                //type = /webm/.test(type) ? type + '; codecs="v9,vorbis"' : type;
-                if ('MediaSource' in window) {
-                    console.log("Source url found: " + source + "; Type: " + type);
-                    var mediaSource = new MediaSource();
-                    //console.log(mediaSource.readyState); // closed
-                    video.src = URL.createObjectURL(mediaSource);
-                    mediaSource.addEventListener('sourceopen', mediaSourceOpen);
-                } else {
-                    // We'll default here to creating a blob url
-                }
-                function mediaSourceOpen (_) {
-                    //console.log(this.readyState); // open
-                    var mediaSource = this;
-                    var sourceBuffer = mediaSource.addSourceBuffer(type);
-                    selectedArchive.getDirEntryByTitle(decodeURIComponent(source)).then(function(dirEntry) {
-                        return selectedArchive.readBinaryFile(dirEntry, function (fileDirEntry, mediaArray) {
-                            sourceBuffer.addEventListener('updateend', function (_) {
-                                mediaSource.endOfStream();
-                                video.play();
-                            });
-                            var buf = mediaArray.buffer;
-                            sourceBuffer.appendBuffer(buf);
-                        });
+                selectedArchive.getDirEntryByTitle(decodeURIComponent(source)).then(function(dirEntry) {
+                    return selectedArchive.readBinaryFile(dirEntry, function (fileDirEntry, mediaArray) {
+                        var dataView = new DataView(mediaArray.buffer);
+                        var blob = new Blob([dataView], { type: mimeType });
+                        // In Edge, we can simply replace a <source> tag's src attribute with the blob URL, but this doesn't work in
+                        // Firefox or Chromium, so instead we ascend the tree and fill the (empty) src element of the parent <video> tag
+                        // TODO: Deal with the case of multiple media sources for one video tag...
+                        if (/source/i.test(mediaSource.tagName) && /video/i.test(mediaSource.parentElement.tagName)) {
+                            mediaSource = mediaSource.parentElement;
+                        }
+                        mediaSource.src = URL.createObjectURL(blob);
                     });
-                }
+                });
             });
         }
     }
