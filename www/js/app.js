@@ -814,7 +814,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
     // OR href=["'] (ignoring any extra whitespace), and it then tests everything up to the next ["'] against a pattern that
     // matches ZIM URLs with namespaces [-I] ("-" = metadata or "I" = image). Finally it removes the relative or absolute path. 
     // DEV: If you want to support more namespaces, add them to the END of the character set [-I] (not to the beginning) 
-    var regexpTagsWithZimUrl = /(<(?:img|script|link|video|source)\s+[^>]*?\b)(?:src|href)(\s*=\s*["']\s*)(?:\.\.\/|\/)+([-I]\/[^"']*)/ig;
+    var regexpTagsWithZimUrl = /(<(?:img|script|link|video|audio|source)\s+[^>]*?\b)(?:src|href)(\s*=\s*["']\s*)(?:\.\.\/|\/)+([-I]\/[^"']*)/ig;
     
     // Cache for CSS styles contained in ZIM.
     // It significantly speeds up subsequent page display. See kiwix-js issue #335
@@ -866,7 +866,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             loadCSSJQuery();
             //JavaScript loading currently disabled
             //loadJavaScriptJQuery();            
-            insertVideoBlobsJQuery();
+            insertMediaBlobsJQuery();
         };
      
         // Load the blank article to clear the iframe (NB iframe onload event runs *after* this)
@@ -1032,9 +1032,9 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             });
         }
 
-        function insertVideoBlobsJQuery() {
+        function insertMediaBlobsJQuery() {
             var iframe = iframeArticleContent.contentDocument;
-            Array.prototype.slice.call(iframe.querySelectorAll('video[data-kiwixurl], source[data-kiwixurl]'))
+            Array.prototype.slice.call(iframe.querySelectorAll('video[data-kiwixurl], audio[data-kiwixurl], source[data-kiwixurl]'))
             .forEach(function(mediaSource) {
                 var source = mediaSource.dataset.kiwixurl;
                 var mimeType = mediaSource.type;
@@ -1044,19 +1044,22 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 }
                 if (!mimeType) {
                     // Try to guess type from file extension
-                    mimeType = source.replace(/^.*\.([^.]+)$/, 'video/$1');
+                    var mediaType = mediaSource.tagName.toLowerCase();
+                    if (!/audio|video/i.test(mediaType)) mediaType = mediaSource.parentElement.tagName.toLowerCase();
+                    if (!/audio|video/i.test(mediaType)) mediaType = 'audio';
+                    mimeType = source.replace(/^.*\.([^.]+)$/, mediaType + '/$1');
                 }
                 selectedArchive.getDirEntryByTitle(decodeURIComponent(source)).then(function(dirEntry) {
                     return selectedArchive.readBinaryFile(dirEntry, function (fileDirEntry, mediaArray) {
                         var dataView = new DataView(mediaArray.buffer);
                         var blob = new Blob([dataView], { type: mimeType });
-                        // In Edge, we can simply replace a <source> tag's src attribute with the blob URL, but this doesn't work in
-                        // Firefox or Chromium, so instead we ascend the tree and fill the (empty) src element of the parent <video> tag
-                        // TODO: Deal with the case of multiple media sources for one video tag...
-                        if (/source/i.test(mediaSource.tagName) && /video/i.test(mediaSource.parentElement.tagName)) {
-                            mediaSource = mediaSource.parentElement;
-                        }
                         mediaSource.src = URL.createObjectURL(blob);
+                        // In Firefox and Chromium it is necessary to re-register the inserted media source
+                        if (/video|audio/i.test(mediaSource.tagname)) {
+                            mediaSource.load();
+                        } else if (/video|audio/i.test(mediaSource.parentElement.tagName)) {
+                            mediaSource.parentElement.load();
+                        }
                     });
                 });
             });
