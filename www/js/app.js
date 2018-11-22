@@ -1046,7 +1046,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                     // Try to guess type from file extension
                     var mediaType = mediaSource.tagName.toLowerCase();
                     if (!/audio|video/i.test(mediaType)) mediaType = mediaSource.parentElement.tagName.toLowerCase();
-                    if (!/audio|video/i.test(mediaType)) mediaType = 'audio';
+                    if (!/audio|video/i.test(mediaType)) mediaType = 'video';
                     mimeType = source.replace(/^.*\.([^.]+)$/, mediaType + '/$1');
                 }
                 selectedArchive.getDirEntryByTitle(decodeURIComponent(source)).then(function(dirEntry) {
