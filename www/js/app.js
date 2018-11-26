@@ -814,7 +814,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
     // OR href=["'] (ignoring any extra whitespace), and it then tests everything up to the next ["'] against a pattern that
     // matches ZIM URLs with namespaces [-I] ("-" = metadata or "I" = image). Finally it removes the relative or absolute path. 
     // DEV: If you want to support more namespaces, add them to the END of the character set [-I] (not to the beginning) 
-    var regexpTagsWithZimUrl = /(<(?:img|script|link|video|audio|source)\s+[^>]*?\b)(?:src|href)(\s*=\s*["']\s*)(?:\.\.\/|\/)+([-I]\/[^"']*)/ig;
+    var regexpTagsWithZimUrl = /(<(?:img|script|link|video|audio|source|track)\s+[^>]*?\b)(?:src|href)(\s*=\s*["']\s*)(?:\.\.\/|\/)+([-I]\/[^"']*)/ig;
     
     // Cache for CSS styles contained in ZIM.
     // It significantly speeds up subsequent page display. See kiwix-js issue #335
@@ -1034,7 +1034,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
 
         function insertMediaBlobsJQuery() {
             var iframe = iframeArticleContent.contentDocument;
-            Array.prototype.slice.call(iframe.querySelectorAll('video[data-kiwixurl], audio[data-kiwixurl], source[data-kiwixurl]'))
+            Array.prototype.slice.call(iframe.querySelectorAll('video[data-kiwixurl], audio[data-kiwixurl], source[data-kiwixurl], track[data-kiwixurl]'))
             .forEach(function(mediaSource) {
                 var source = mediaSource.dataset.kiwixurl;
                 var mimeType = mediaSource.type;
@@ -1042,7 +1042,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                     console.error('No usable media source was found!');
                     return;
                 }
-                if (!mimeType) {
+                if (!mimeType && !/track/i.test(mediaSource.tagName)) {
                     // Try to guess type from file extension
                     var mediaType = mediaSource.tagName.toLowerCase();
                     if (!/audio|video/i.test(mediaType)) mediaType = mediaSource.parentElement.tagName.toLowerCase();
@@ -1055,6 +1055,8 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                         var blob = new Blob([dataView], { type: mimeType });
                         mediaSource.src = URL.createObjectURL(blob);
                         // In Firefox and Chromium it is necessary to re-register the inserted media source
+                        // but do not reload for text tracks (closed captions / subtitles)
+                        if (/track/i.test(mediaSource.tagName)) return;
                         if (/video|audio/i.test(mediaSource.tagname)) {
                             mediaSource.load();
                         } else if (/video|audio/i.test(mediaSource.parentElement.tagName)) {
