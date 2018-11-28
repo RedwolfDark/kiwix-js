@@ -1090,9 +1090,9 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
      * 
      * @param {String} title The path and filename to the article or file to be extracted
      * @param {Boolean} download If true, the file will be prepared for download instead of treated as an article
-     * @param {String} type The mimetype of the downloadable file, if known 
+         * @param {String} contentType The mimetype of the downloadable file, if known 
      */
-    function goToArticle(title, download, type) {
+    function goToArticle(title, download, contentType) {
         $("#searchingArticles").show();
         title = uiUtil.removeUrlParameters(title);
         selectedArchive.getDirEntryByTitle(title).then(function(dirEntry) {
@@ -1100,22 +1100,24 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 $("#searchingArticles").hide();
                 alert("Article with title " + title + " not found in the archive");
             } else if (download) {
-                selectedArchive.readBinaryFile(dirEntry, function(fileDirEntry, content) {
+                selectedArchive.readBinaryFile(dirEntry, function (fileDirEntry, content) {
                     // Download code taken from https://stackoverflow.com/a/19230668/9727685 
-                    if(!type) type = 'application/octet-stream';
+                    if (!contentType) contentType = 'application/octet-stream';
                     var a = document.createElement('a');
-                    var blob = new Blob([content], {'type':type});
+                    var blob = new Blob([content], { 'type': contentType });
                     var filename = download || title.replace(/^.*\/([^\/]+)$/, '$1');
+                    // Make filename safe
+                    filename = filename.replace(/[\/\\:*?"<>|]/g, '_');
                     a.href = window.URL.createObjectURL(blob);
                     a.target = '_blank';
-                    a.type = type;
+                    a.type = contentType;
                     a.download = filename;
                     a.innerHTML = filename;
                     var alertMessage = document.getElementById('alertMessage');
                     alertMessage.innerHTML = '<strong>Download</strong> If the download does not start, please click the following link: ';
                     alertMessage.appendChild(a); // NB we have to add the anchor to the document for Firefox to be able to click it
                     try { a.click(); }
-                    catch (err) { 
+                    catch (err) {
                         // If the click fails, use an alternative download method
                         if (window.navigator && window.navigator.msSaveBlob) {
                             // This works for IE11
