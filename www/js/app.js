@@ -1051,8 +1051,8 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 }
                 selectedArchive.getDirEntryByTitle(decodeURIComponent(source)).then(function(dirEntry) {
                     return selectedArchive.readBinaryFile(dirEntry, function (fileDirEntry, mediaArray) {
-                        var dataView = new DataView(mediaArray.buffer);
-                        var blob = new Blob([dataView], { type: mimeType });
+                        //var dataView = new DataView(mediaArray.buffer);
+                        var blob = new Blob([mediaArray], { type: mimeType });
                         mediaSource.src = URL.createObjectURL(blob);
                         // In Firefox and Chromium it is necessary to re-register the inserted media source
                         // but do not reload for text tracks (closed captions / subtitles)
