@@ -1034,33 +1034,83 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
 
         function insertMediaBlobsJQuery() {
             var iframe = iframeArticleContent.contentDocument;
-            Array.prototype.slice.call(iframe.querySelectorAll('video[data-kiwixurl], audio[data-kiwixurl], source[data-kiwixurl], track[data-kiwixurl]'))
+            Array.prototype.slice.call(iframe.querySelectorAll('video[data-kiwixurl], audio[data-kiwixurl], source[data-kiwixurl]'))
             .forEach(function(mediaSource) {
                 var source = mediaSource.dataset.kiwixurl;
-                var mimeType = mediaSource.type;
                 if (!source || !regexpZIMUrlWithNamespace.test(source)) {
                     console.error('No usable media source was found!');
                     return;
                 }
-                if (!mimeType && !/track/i.test(mediaSource.tagName)) {
+                var mediaElement = /audio|video/i.test(mediaSource.tagName) ? mediaSource : mediaSource.parentElement;
+                var mimeType = mediaSource.type;
+                // Check mimeType
+                if (!mimeType) {
                     // Try to guess type from file extension
-                    var mediaType = mediaSource.tagName.toLowerCase();
-                    if (!/audio|video/i.test(mediaType)) mediaType = mediaSource.parentElement.tagName.toLowerCase();
+                    var mediaType = mediaElement.tagName.toLowerCase();
                     if (!/audio|video/i.test(mediaType)) mediaType = 'video';
                     mimeType = source.replace(/^.*\.([^.]+)$/, mediaType + '/$1');
                 }
+                // Create custom subtitle / cc load menu if it doesn't already exist
+                if (!iframe.getElementById('kiwixCCMenu')) buildCustomCCMenu(iframe, mediaElement);
+                // Load media file
                 selectedArchive.getDirEntryByTitle(decodeURIComponent(source)).then(function(dirEntry) {
                     return selectedArchive.readBinaryFile(dirEntry, function (fileDirEntry, mediaArray) {
                         var blob = new Blob([mediaArray], { type: mimeType });
                         mediaSource.src = URL.createObjectURL(blob);
                         // In Firefox and Chromium it is necessary to re-register the inserted media source
                         // but do not reload for text tracks (closed captions / subtitles)
-                        if (/track/i.test(mediaSource.tagName)) return;
-                        if (/video|audio/i.test(mediaSource.tagName)) {
-                            mediaSource.load();
-                        } else if (/video|audio/i.test(mediaSource.parentElement.tagName)) {
-                            mediaSource.parentElement.load();
-                        }
+                        mediaElement.load();
+                    });
+                });
+            });
+        }
+
+        /**
+         * Create a custom dropdown menu item beneath the given mediaElement (audio or video block) to allow the user to
+         * select the language of text tracks (subtitles/CC) to extract from the ZIM (this is necessary because there is
+         * no universal onchange event that fires for subtitle changes in the html5 video widget when the URL is invalid)
+         * 
+         * @param {Document} doc The document in which the new menu will be placed (usually window.document or iframe)
+         * @param {Element} mediaElement The media element (usually audio or video block) which contains the the text tracks
+         */
+        function buildCustomCCMenu(doc, mediaElement) {
+            var optionList = [];
+            var langs = '';
+            var currentTracks = mediaElement.getElementsByTagName('track');
+            // Extract track data from current media element
+            for (var i = currentTracks.length; i--;) {
+                langs = currentTracks[i].label + ' [' + currentTracks[i].srclang + ']';
+                optionList.unshift('<option value="' + currentTracks[i].srclang + '" data-kiwixsrc="' + 
+                    currentTracks[i].dataset.kiwixurl + '" data-kiwixkind="' + currentTracks[i].kind + '">' +
+                    langs + '</option>');
+                    currentTracks[i].remove();
+            }
+            optionList.unshift('<option value="" data-kiwixsrc="">None</option>');
+            var newKiwixCCMenu = '<select id="kiwixCCMenuLangList">\n' + optionList.join('\n') + '\n</select>';
+            // Create the new container and menu
+            var d = doc.createElement('DIV');
+            d.id = 'kiwixCCMenu';
+            d.style = 'margin-top: 1em;';
+            d.innerHTML = 'Please select subtitle/cc language: ' + newKiwixCCMenu;
+            mediaElement.parentElement.insertBefore(d, mediaElement.nextSibling);
+            // Add event listener to extract the text track from the ZIM and insert it into the media element when the user selects it
+            newKiwixCCMenu = doc.getElementById('kiwixCCMenu').addEventListener('change', function(v) {
+                var existingCC = doc.getElementById('kiwixSelCC');
+                if (existingCC) existingCC.remove();
+                var sel = v.target.options[v.target.selectedIndex];
+                if (!sel.value) return; // User selected "none"
+                selectedArchive.getDirEntryByTitle(sel.dataset.kiwixsrc).then(function(dirEntry) {
+                    return selectedArchive.readBinaryFile(dirEntry, function(fileDirEntry, trackContents) {
+                        var trackBlob = new Blob([trackContents], { type: 'text/vtt' });
+                        var t = doc.createElement('track');
+                        t.id = 'kiwixSelCC';
+                        t.kind = sel.dataset.kiwixkind;
+                        t.label = sel.innerHTML;
+                        t.srclang = sel.value;
+                        t.default = true;
+                        t.src = URL.createObjectURL(trackBlob);
+                        t.dataset.kiwixurl = sel.dataset.kiwixsrc;
+                        mediaElement.appendChild(t);
                     });
                 });
             });
