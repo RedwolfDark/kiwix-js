@@ -1083,20 +1083,20 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 optionList.unshift('<option value="' + currentTracks[i].srclang + '" data-kiwixsrc="' + 
                     currentTracks[i].dataset.kiwixurl + '" data-kiwixkind="' + currentTracks[i].kind + '">' +
                     langs + '</option>');
-                    currentTracks[i].remove();
+                    currentTracks[i].parentNode.removeChild(currentTracks[i]);
             }
             optionList.unshift('<option value="" data-kiwixsrc="">None</option>');
             var newKiwixCCMenu = '<select id="kiwixCCMenuLangList">\n' + optionList.join('\n') + '\n</select>';
             // Create the new container and menu
             var d = doc.createElement('DIV');
             d.id = 'kiwixCCMenu';
-            d.style = 'margin-top: 1em;';
-            d.innerHTML = 'Please select subtitle/cc language: ' + newKiwixCCMenu;
+            d.setAttribute('style', 'margin-top: 1em; text-align: left;');
+            d.innerHTML = 'Please select subtitle language: ' + newKiwixCCMenu;
             mediaElement.parentElement.insertBefore(d, mediaElement.nextSibling);
             // Add event listener to extract the text track from the ZIM and insert it into the media element when the user selects it
             newKiwixCCMenu = doc.getElementById('kiwixCCMenu').addEventListener('change', function(v) {
                 var existingCC = doc.getElementById('kiwixSelCC');
-                if (existingCC) existingCC.remove();
+                if (existingCC) existingCC.parentNode.removeChild(existingCC);
                 var sel = v.target.options[v.target.selectedIndex];
                 if (!sel.value) return; // User selected "none"
                 selectedArchive.getDirEntryByTitle(sel.dataset.kiwixsrc).then(function(dirEntry) {
